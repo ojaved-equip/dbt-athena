@@ -56,5 +56,6 @@ setup(
         "pyathena==2.2.0",
         "boto3==1.18.12",
         "tenacity==6.3.1",
+        "markupsafe==2.0.1"
     ]
 )
