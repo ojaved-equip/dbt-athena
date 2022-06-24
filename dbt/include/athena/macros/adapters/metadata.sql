@@ -65,9 +65,21 @@
 
                 )
 
-                {%- for schema in schemas -%}
-                select * from catalog where lower("table_schema") = lower('{{ schema }}')
-                {%- if not loop.last %} union all {% endif -%}
+                {%- for schema, relations in schemas.items() -%}
+                  {%- for relation_batch in relations|batch(100) %}
+                    select * from catalog
+                    where "table_schema" = lower('{{ schema }}') 
+                      and (
+                        {%- for relation in relation_batch -%}
+                          "table_name" = lower('{{ relation }}')
+                        {%- if not loop.last %} or {% endif -%}
+                        {%- endfor -%}
+                      )
+
+                    {%- if not loop.last %} union all {% endif -%}
+                  {%- endfor -%}
+
+                  {%- if not loop.last %} union all {% endif -%}
                 {%- endfor -%}
             )
         )
@@ -97,7 +109,7 @@
         table_name as name,
         table_schema as schema
       from {{ schema_relation.information_schema() }}.views
-      where LOWER(table_schema) = LOWER('{{ schema_relation.schema }}')
+      where table_schema = LOWER('{{ schema_relation.schema }}')
     ), tables AS (
       select
         table_catalog as database,
@@ -105,7 +117,7 @@
         table_schema as schema
 
       from {{ schema_relation.information_schema() }}.tables
-      where LOWER(table_schema) = LOWER('{{ schema_relation.schema }}')
+      where table_schema = LOWER('{{ schema_relation.schema }}')
 
       -- Views appear in both `tables` and `views`, so excluding them from tables
       EXCEPT 
